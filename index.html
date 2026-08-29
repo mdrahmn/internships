@@ -55,6 +55,7 @@
   .stat{background:var(--sheet); padding:13px 15px 15px;}
   .stat .n{font-family:"Archivo",sans-serif; font-weight:700; font-size:27px; color:var(--ink);
     line-height:1.05; letter-spacing:-.03em; font-variant-numeric:tabular-nums;}
+  .stat .n .of{font-size:15px; font-weight:600; color:var(--ink-3); letter-spacing:-.01em;}
   .stat .k{font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.11em;
     text-transform:uppercase; color:var(--ink-3); margin-top:2px;}
   .stat.hi .n{color:var(--blue);} .stat.warn .n{color:var(--oxide);}
@@ -604,10 +605,16 @@
 
     statsEl.innerHTML = "";
     [[DATA.length,"On board",""],[newCount,"New","hi"],[openNow,"Open / rolling",""],
-     [soonCount,"Closing <45d","warn"],[applied,"Applied",""]].forEach(function(s){
+     [soonCount,"Closing <45d","warn"],[applied,"Applied","",DATA.length]].forEach(function(s){
       var el = document.createElement("div");
       el.className = "stat" + (s[2] ? " " + s[2] : "");
       var n = document.createElement("div"); n.className = "n"; n.textContent = s[0];
+      if(s[3] != null){
+        var of = document.createElement("span");
+        of.className = "of"; of.textContent = " / " + s[3];
+        n.appendChild(of);
+        n.setAttribute("aria-label", s[0] + " applied out of " + s[3]);
+      }
       var k = document.createElement("div"); k.className = "k"; k.textContent = s[1];
       el.appendChild(n); el.appendChild(k); statsEl.appendChild(el);
     });
