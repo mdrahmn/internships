@@ -77,6 +77,8 @@
   }
   .anitem .ao{font-family:"Archivo",sans-serif; font-weight:700; font-size:14.5px; letter-spacing:-.01em;}
   .anitem .ar{font-size:12.5px; color:var(--ink-2); flex:1; min-width:150px;}
+  .anitem .afit{font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--ink-3);}
   .anitem .ad{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; color:var(--moss);}
   .anitem .ad.crit{color:var(--oxide);}
   .anitem a{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.07em;
@@ -484,13 +486,41 @@
   }
 
   // Priority: can I act on it, how good is the fit, how soon does it close.
+  // Can you actually act on this today? A req with an apply button beats a program
+  // that opens on its own schedule, which beats a search page whose req isn't posted.
+  function actionRank(o){
+    return o.linkType === "posting" ? 0 : o.linkType === "program" ? 1 : 2;
+  }
+
+  // Lower is better. Four independent signals, weighted so fit dominates but never
+  // buries something closing this week, and so a row you cannot apply to yet sinks.
   function score(o){
     var d = daysTo(o.deadline);
-    if(d !== null && d < 0) return 9000;                       // closed, sink it
-    var fit = o.fit === "STRONG" ? 0 : o.fit === "REAL SHOT" ? 120 : 260;
-    var urg = d === null ? 0                                    // open or rolling: act today
-            : d <= 30 ? 20 : d <= 60 ? 60 : d <= 120 ? 110 : 180;
-    return fit + urg;
+    if(d !== null && d < 0) return 9000;                        // closed, sink it
+    var fit = o.fit === "STRONG" ? 0 : o.fit === "REAL SHOT" ? 140 : 300;
+    var urg = d === null
+            ? (o.deadline === "rolling" ? 45 : 60)              // no cliff, but rolling rewards early
+            : d <= 7   ? 0
+            : d <= 14  ? 8
+            : d <= 30  ? 18
+            : d <= 45  ? 30
+            : d <= 60  ? 55
+            : d <= 120 ? 95 : 150;
+    var act = actionRank(o) === 0 ? 0                           // live req — answerable tonight
+            : actionRank(o) === 1 ? 25                          // right door, opens on schedule
+            : 90;                                               // req not posted — a watch item
+    var conf = o.src === "CONFIRMED" ? 0 : 12;                  // an estimated date earns less urgency
+    return fit + urg + act + conf;
+  }
+
+  // Why this row is near the top, in his words, so the order is auditable.
+  function reasonText(o){
+    var d = daysTo(o.deadline);
+    if(d !== null) return "closes in " + d + " day" + (d === 1 ? "" : "s");
+    if(o.deadline === "rolling"){
+      return o.linkType === "posting" ? "rolling — apply tonight" : "rolling — opens on their schedule";
+    }
+    return o.linkType === "posting" ? "open now" : "open — no close published";
   }
 
   var filter = "all", sortBy = "priority", query = "";
@@ -518,6 +548,11 @@
       }
       var sa = score(a), sb = score(b);
       if(sa !== sb) return sa - sb;
+      var da2 = daysTo(a.deadline), db2 = daysTo(b.deadline);
+      if((da2 === null) !== (db2 === null)) return da2 === null ? 1 : -1;  // a real date outranks none
+      if(da2 !== null && db2 !== null && da2 !== db2) return da2 - db2;    // sooner first
+      var aa = actionRank(a), ab = actionRank(b);
+      if(aa !== ab) return aa - ab;                                        // applyable first
       return a.org.localeCompare(b.org);
     });
   }
@@ -561,16 +596,24 @@
       var st = store.status[o.id] || "todo";
       if(st !== "todo") return false;
       if(d !== null && d < 0) return false;
-      return (d === null && o.fit === "STRONG") || (d !== null && d <= 30);
-    }).sort(function(a,b){ return score(a) - score(b); }).slice(0, 6);
+      if(o.linkType === "board") return false;      // req isn't posted — nothing to do today
+      return o.fit === "STRONG" || (d !== null && d <= 45);
+    }).sort(function(a,b){
+      var sa = score(a), sb = score(b);
+      if(sa !== sb) return sa - sb;
+      var da = daysTo(a.deadline), db = daysTo(b.deadline);
+      if((da === null) !== (db === null)) return da === null ? 1 : -1;
+      if(da !== null && db !== null && da !== db) return da - db;
+      return actionRank(a) - actionRank(b);
+    }).slice(0, 5);
 
     actEl.innerHTML = "";
     var h = document.createElement("h2");
     h.textContent = picks.length ? "Do these first" : "Nothing urgent";
     var why = document.createElement("p"); why.className = "why";
     why.textContent = picks.length
-      ? "Open right now with a strong fit, or closing within 30 days. Everything else can wait a week; these can't."
-      : "Nothing is open-and-strong or closing inside 30 days that you haven't already handled. Work down the board below.";
+      ? "Ranked by fit, whether you can apply today, and how soon it closes. Nothing here is waiting on a requisition to appear — every one is answerable now."
+      : "Nothing open-and-strong or closing inside 45 days that you haven't already handled. Work down the board below.";
     actEl.appendChild(h); actEl.appendChild(why);
 
     var list = document.createElement("div"); list.className = "anlist";
@@ -579,12 +622,13 @@
       var it = document.createElement("div"); it.className = "anitem";
       var ao = document.createElement("span"); ao.className = "ao"; ao.textContent = o.org;
       var ar = document.createElement("span"); ar.className = "ar"; ar.textContent = o.role;
+      var af = document.createElement("span"); af.className = "afit"; af.textContent = o.fit;
       var ad = document.createElement("span");
       ad.className = "ad" + (d !== null && d <= 30 ? " crit" : "");
-      ad.textContent = d === null ? (o.deadline === "rolling" ? "rolling" : "open") : d + " days";
+      ad.textContent = reasonText(o);
       var a = document.createElement("a");
       a.href = o.link; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open";
-      it.appendChild(ao); it.appendChild(ar); it.appendChild(ad); it.appendChild(a);
+      it.appendChild(ao); it.appendChild(ar); it.appendChild(af); it.appendChild(ad); it.appendChild(a);
       list.appendChild(it);
     });
     actEl.appendChild(list);
