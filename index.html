@@ -120,14 +120,45 @@
     border-right:1px solid var(--rule-soft); background:var(--sheet-2);
     display:flex; align-items:center; padding:9px 8px;
   }
-  .stbtn{
-    font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.08em;
-    text-transform:uppercase; padding:7px 4px; cursor:pointer; width:100%;
-    background:var(--sheet); color:var(--ink-3);
+  /* A caret, so it reads as a dropdown rather than a button. Drawn with a
+     border-colour-agnostic chevron and kept out of the colour rules below,
+     which set background-color only so they never wipe the image. */
+  .stsel{
+    font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.06em;
+    text-transform:uppercase; padding:7px 17px 7px 7px; cursor:pointer; width:100%;
+    background-color:var(--sheet); color:var(--ink-3);
+    background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 6px center; background-size:8px 5px;
+    text-align:center; text-align-last:center;
     border:1px solid var(--rule); border-radius:3px; font-weight:500;
+    -webkit-appearance:none; appearance:none;
   }
-  .stbtn[data-s="applied"]{background:var(--moss-wash); color:var(--moss); border-color:var(--moss);}
-  .stbtn[data-s="skipped"]{background:var(--sheet-3); color:var(--ink-3); text-decoration:line-through;}
+  .stsel:hover{border-color:var(--ink-3);}
+  .stsel:focus-visible{outline:2px solid var(--blue); outline-offset:1px;}
+  .stsel[data-s="applied"]{background-color:var(--moss-wash); color:var(--moss); border-color:var(--moss);}
+  .stsel[data-s="interview"]{background-color:var(--blue-wash); color:var(--blue); border-color:var(--blue); font-weight:600;}
+  .stsel[data-s="accepted"]{background-color:var(--moss); color:var(--paper); border-color:var(--moss); font-weight:600;}
+  .stsel[data-s="rejected"]{background-color:var(--oxide-wash); color:var(--oxide); border-color:var(--oxide);}
+  .stsel[data-s="skipped"]{background-color:var(--sheet-3); color:var(--ink-3); text-decoration:line-through;}
+  .stsel option{background:var(--sheet); color:var(--ink); text-transform:none; letter-spacing:0;}
+
+  /* outcomes — where the applications he sent actually landed */
+  .outcomes{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1px;
+    background:var(--rule); border:1px solid var(--rule); border-radius:3px;
+    overflow:hidden; margin:22px 0 6px;}
+  .ocol{background:var(--sheet); padding:13px 15px 15px;}
+  .ocol h3{font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.11em;
+    text-transform:uppercase; color:var(--ink-3); font-weight:600; margin:0 0 9px;
+    display:flex; align-items:baseline; gap:7px;}
+  .ocol h3 .c{font-family:"Archivo",sans-serif; font-size:19px; font-weight:700;
+    letter-spacing:-.02em; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .ocol.oi h3 .c{color:var(--blue);}
+  .ocol.oa h3 .c{color:var(--moss);}
+  .ocol.orj h3 .c{color:var(--oxide);}
+  .ocol ul{list-style:none; margin:0; padding:0;}
+  .ocol li{font-size:12.5px; line-height:1.5; color:var(--ink-2); padding:1px 0;}
+  .ocol li b{font-family:"Archivo",sans-serif; font-weight:600; color:var(--ink);}
+  .ocol .none{font-size:12px; color:var(--ink-3);}
   .row .mid{padding:12px 16px 13px; min-width:0;}
   .rank{font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.1em;
     text-transform:uppercase; color:var(--ink-3); margin:0 0 3px;}
@@ -281,7 +312,7 @@
   @media (max-width:780px){
     .row{grid-template-columns:1fr;}
     .row .st{border-right:none; border-bottom:1px solid var(--rule-soft); padding:8px 12px;}
-    .stbtn{width:auto; align-self:flex-start; padding:6px 16px;}
+    .stsel{width:auto; align-self:flex-start; padding:6px 12px;}
     .row .rt{border-left:none; border-top:1px solid var(--rule-soft);}
     .acts{margin-top:0;}
   }
@@ -294,7 +325,7 @@
     <h1>Internship Board</h1>
     <p class="sub">Every Summer 2027 opportunity that fits your profile. Sorted so the ones that matter most sit at the top.</p>
     <div class="fresh">
-      <div><span class="k">Updated</span><span class="v" id="built">2026-08-29</span></div>
+      <div><span class="k">Updated</span><span class="v" id="built">2026-08-31</span></div>
       <div><span class="k">Next</span><span class="v ok" id="nextrun">&mdash;</span></div>
       <div><span class="k">Your last edit</span><span class="v" id="youredit">&mdash;</span></div>
       <span class="pin">Permanent link &mdash; pin it. Every update lands here.</span>
@@ -304,6 +335,8 @@
 
   <div class="actnow" id="actnow"></div>
 
+  <div class="outcomes" id="outcomes" hidden></div>
+
   <div class="bar">
     <input class="search" id="q" type="search" placeholder="Search employer, program, or eligibility&hellip;" aria-label="Search opportunities">
     <button class="fbtn" data-f="all" aria-pressed="true">All</button>
@@ -311,7 +344,10 @@
     <button class="fbtn" data-f="open" aria-pressed="false">Open now</button>
     <button class="fbtn" data-f="soon" aria-pressed="false">Closing &lt;45d</button>
     <button class="fbtn" data-f="todo" aria-pressed="false">Not applied</button>
-    <button class="fbtn" data-f="applied" aria-pressed="false">Applied</button>
+    <button class="fbtn" data-f="submitted" aria-pressed="false">Applied</button>
+    <button class="fbtn" data-f="interview" aria-pressed="false">Interview</button>
+    <button class="fbtn" data-f="accepted" aria-pressed="false">Accepted</button>
+    <button class="fbtn" data-f="rejected" aria-pressed="false">Rejected</button>
     <span class="barsep"></span>
     <button class="fbtn" data-s="priority" aria-pressed="true">Priority</button>
     <button class="fbtn" data-s="deadline" aria-pressed="false">Deadline</button>
@@ -349,7 +385,7 @@
   </div>
 
   <footer>
-    <span>Built 2026-08-29 &middot; 117 opportunities</span>
+    <span>Built 2026-08-31 &middot; 117 opportunities</span>
     <span>Updates Mondays and Thursdays</span>
   </footer>
 </div>
@@ -441,10 +477,30 @@
     if(el) el.textContent = store.lastEdit ? whenLabel(store.lastEdit) : "\u2014";
   }
   // handled rows sink: to do first, then applied, then skipped
-  function statusRank(o){
-    var s = store.status[o.id];
-    return s === "skipped" ? 2 : s === "applied" ? 1 : 0;
+  // The pipeline, defined once. This order is the order of the dropdown.
+  var STATUSES = [
+    {v:"todo",      label:"To do"},
+    {v:"applied",   label:"Applied"},
+    {v:"interview", label:"Interview"},
+    {v:"accepted",  label:"Accepted"},
+    {v:"rejected",  label:"Rejected"},
+    {v:"skipped",   label:"Skipped"}
+  ];
+  // Anything he actually sent still counts as applied, wherever it ended up.
+  var SUBMITTED = ["applied","interview","accepted","rejected"];
+  function statusLabel(s){
+    for(var i = 0; i < STATUSES.length; i++){ if(STATUSES[i].v === s) return STATUSES[i].label; }
+    return "To do";
   }
+  // An interview is the most live thing on the board, so it rises above the
+  // queue rather than sinking with everything else he has touched.
+  function statusRank(o){
+    var s = store.status[o.id] || "todo";
+    return s === "interview" ? 0 : s === "todo" ? 1 : s === "applied" ? 2
+         : s === "accepted" ? 3 : s === "rejected" ? 4 : 5;
+  }
+  // Only settled-and-shelved rows get greyed out. An offer should not look dead.
+  function isDimmed(s){ return s === "rejected" || s === "skipped"; }
 
   // --- your notes -------------------------------------------------------
   function noteLines(id){
@@ -528,6 +584,7 @@
   var statsEl = document.getElementById("stats");
   var noteEl = document.getElementById("note");
   var actEl = document.getElementById("actnow");
+  var outEl = document.getElementById("outcomes");
 
   function sortData(){
     DATA.sort(function(a,b){
@@ -634,6 +691,46 @@
     actEl.appendChild(list);
   }
 
+  // Every application he has sent, grouped by where it landed. Hidden entirely
+  // until there is something to show, so an empty board stays clean.
+  function renderOutcomes(){
+    var groups = [
+      {v:"interview", label:"Interview stage", cls:"oi", empty:"None yet."},
+      {v:"accepted",  label:"Accepted",        cls:"oa", empty:"None yet."},
+      {v:"rejected",  label:"Rejected",        cls:"orj", empty:"None."}
+    ];
+    var hit = groups.map(function(g){
+      return DATA.filter(function(o){ return store.status[o.id] === g.v; });
+    });
+    outEl.innerHTML = "";
+    var any = hit.some(function(list){ return list.length > 0; });
+    outEl.hidden = !any;
+    if(!any) return;
+
+    groups.forEach(function(g, i){
+      var col = document.createElement("div"); col.className = "ocol " + g.cls;
+      var h = document.createElement("h3");
+      var c = document.createElement("span"); c.className = "c"; c.textContent = hit[i].length;
+      h.appendChild(c); h.appendChild(document.createTextNode(g.label));
+      col.appendChild(h);
+      if(!hit[i].length){
+        var p = document.createElement("p"); p.className = "none"; p.textContent = g.empty;
+        col.appendChild(p);
+      } else {
+        var ul = document.createElement("ul");
+        hit[i].forEach(function(o){
+          var li = document.createElement("li");
+          var bo = document.createElement("b"); bo.textContent = o.org;
+          li.appendChild(bo);
+          li.appendChild(document.createTextNode(" — " + o.role));
+          ul.appendChild(li);
+        });
+        col.appendChild(ul);
+      }
+      outEl.appendChild(col);
+    });
+  }
+
   function render(){
     sortData();
     paintLastEdit();
@@ -641,7 +738,7 @@
 
     DATA.forEach(function(o){
       if(isNew(o)) newCount++;
-      if(store.status[o.id] === "applied") applied++;
+      if(SUBMITTED.indexOf(store.status[o.id]) !== -1) applied++;
       var d = daysTo(o.deadline);
       if(d === null) openNow++;
       if(d !== null && d >= 0 && d <= 45) soonCount++;
@@ -664,6 +761,7 @@
     });
 
     renderActNow();
+    renderOutcomes();
 
     rowsEl.innerHTML = "";
     var pos = 0;
@@ -676,7 +774,9 @@
       if(filter === "open" && d !== null) return;
       if(filter === "soon" && !(d !== null && d >= 0 && d <= 45)) return;
       if(filter === "todo" && st !== "todo") return;
-      if(filter === "applied" && st !== "applied") return;
+      if(filter === "submitted" && SUBMITTED.indexOf(st) === -1) return;
+      if((filter === "interview" || filter === "accepted" || filter === "rejected")
+         && st !== filter) return;
       if(query){
         var hay = (o.org + " " + o.role + " " + o.gate + " " + o.cat + " " + o.fit + " " + (o.hint||"") + " " + (store.notes[o.id]||"")).toLowerCase();
         if(hay.indexOf(query) === -1) return;
@@ -684,32 +784,37 @@
       shown++; pos++;
 
       var row = document.createElement("div");
-      row.className = "row" + (nu ? " isnew" : "") + (st !== "todo" ? " done" : "");
+      row.className = "row" + (nu ? " isnew" : "") + (isDimmed(st) ? " done" : "");
 
       var stc = document.createElement("div"); stc.className = "st";
-      var btn = document.createElement("button");
-      btn.className = "stbtn"; btn.setAttribute("data-s", st);
-      btn.textContent = st === "applied" ? "Applied" : st === "skipped" ? "Skipped" : "Mark";
-      btn.title = "Cycle: to do → applied → skipped";
+      var btn = document.createElement("select");
+      btn.className = "stsel"; btn.setAttribute("data-s", st);
+      btn.setAttribute("aria-label", "Status — " + o.org + ", " + o.role);
+      btn.title = "Where this one stands";
+      STATUSES.forEach(function(s){
+        var op = document.createElement("option");
+        op.value = s.v; op.textContent = s.label;
+        if(s.v === st) op.selected = true;
+        btn.appendChild(op);
+      });
       var sinkTimer = null, dropTimer = null;
-      btn.addEventListener("click", function(){
-        var cur = store.status[o.id] || "todo";
-        var next = cur === "todo" ? "applied" : cur === "applied" ? "skipped" : "todo";
+      btn.addEventListener("change", function(){
+        var next = btn.value;
         if(next === "todo"){ delete store.status[o.id]; } else { store.status[o.id] = next; }
         touch(o.id); save();
 
         // Show the change on the spot — no rebuild, so nothing jumps under the cursor.
         btn.setAttribute("data-s", next);
-        btn.textContent = next === "applied" ? "Applied" : next === "skipped" ? "Skipped" : "Mark";
-        row.classList.toggle("done", next !== "todo");
+        row.classList.toggle("done", isDimmed(next));
         paintNotes(nbtn, o.id);
         paintLastEdit();
+        renderOutcomes();
 
         clearTimeout(sinkTimer); clearTimeout(dropTimer);
         row.classList.remove("sinking");
-        // Back to "to do" belongs in the live list again — put it back immediately.
-        if(next === "todo"){ render(); return; }
-        // Otherwise let it sit a beat, then sink it to the bottom.
+        // Back in the queue, or newly at interview — both move up, so re-place now.
+        if(next === "todo" || next === "interview"){ render(); return; }
+        // A settled outcome sinks: let it sit a beat so the change registers first.
         sinkTimer = setTimeout(function(){
           row.classList.add("sinking");
           dropTimer = setTimeout(render, 360);
@@ -877,7 +982,7 @@
       out.push("## " + o.org);
       out.push("_" + o.role + "_");
       out.push("");
-      out.push("- Status: " + (store.status[o.id] || "to do"));
+      out.push("- Status: " + statusLabel(store.status[o.id] || "todo"));
       out.push("- Deadline: " + d);
       out.push("- " + o.link);
       out.push("");
